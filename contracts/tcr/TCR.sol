@@ -88,6 +88,31 @@ contract TCR is ITCR {
 
   }
 
+  function apply(bytes32 listingHash, uint256 amount, string data) external {
+
+    require(!IsWhitelisted(listingHash), "Listing is already whitelisted");
+    require(!appWasMade(listingHash), "Listing is already in apply mode");
+    require(amount >= minDeposit, "Not enough stake for app");
+
+    Listing storage listing = listings[listingHash];
+
+    listing.owner = msg.sender;
+    listing.data = data;
+    listingNames.push(listing.data);
+    listing.arrIndex = listingNames.length - 1;
+
+    listing.applicationExpiry = now.add(applyStageLen);
+
+    listing.deposit = amount;
+
+    require(token.transferFrom(listing.owner, this, amount), "Token transfer failed");
+
+    emit Application(listingHash, amount, data, msg.sender);
+
+  }
+
+  
+
   //GETTERS
 
   function isWhitelisted(bytes32 listingHash) public view returns (bool whitelisted) {
@@ -102,7 +127,7 @@ contract TCR is ITCR {
 
   }
 
-  function getALlListings() public view returns (string[]) {
+  function getAllListings() public view returns (string[]) {
 
     string[] memory listingArr = new string[](listingNames.length);
 
