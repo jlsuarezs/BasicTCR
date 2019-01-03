@@ -88,6 +88,60 @@ contract TCR is ITCR {
 
   }
 
-  
+  //GETTERS
+
+  function isWhitelisted(bytes32 listingHash) public view returns (bool whitelisted) {
+
+    return listings[listingHash].whitelisted;
+
+  }
+
+  function appWasMade(bytes32 listingHash) public view returns (bool exists) {
+
+    return listings[listingHash].applicationExpiry > 0;
+
+  }
+
+  function getALlListings() public view returns (string[]) {
+
+    string[] memory listingArr = new string[](listingNames.length);
+
+    for (uint256 i = 0; i < listingNames.length; i++) {
+
+      listingArr[i] = listingNames[i];
+
+    }
+
+    return listingArr;
+
+  }
+
+  function getDetails() public view returns (string, address, uint256, uint256, uint256) {
+
+    return (name, token, minDeposit, applyStageLen, commitStageLen);
+
+  }
+
+  function getListingDetails(bytes32 listingHash) public view returns (bool, address, uint256, uint256, string) {
+
+    Listing memory listingIns = listings[listingHash];
+
+    require(appWasMade(listingHash) || listingIns.whitelisted, "Listing does not exist");
+
+    return (listingIns.whitelisted, listingIns.owner,
+      listingIns.deposit, listingIns.challengeId, listingIns.data);
+
+  }
+
+  function canBeWhitelisted(bytes32 listingHash) public view returns (bool) {
+
+    uint256 challengeId = listings[listingHash].challengeId;
+
+    return (appWasMade(listingHash) &&
+            listings[listingHash].applicationExpiry < now &&
+            !isWhitelisted(listingHash) &&
+            (challengeId == 0 || challenges[challengeId].resolved == true));
+
+  }
 
 }
