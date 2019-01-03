@@ -1,0 +1,33 @@
+{
+  "name": "basic-tcr",
+  "version": "1.0.0",
+  "description": "A very basic token curated registry implementation inspired by Mike Goldin and @gautamdhameja",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stefanionescu/BasicTCR.git"
+  },
+  "keywords": [
+    "token",
+    "curated",
+    "registry",
+    "ethereum",
+    "solidity",
+    "truffle"
+  ],
+  "author": "Stefan Ionescu, stefanionescu@protonmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stefanionescu/BasicTCR/issues"
+  },
+  "homepage": "https://github.com/stefanionescu/BasicTCR#readme",
+  "dependencies": {
+    "openzeppelin-solidity": "^2.0.0"
+  }
+}
