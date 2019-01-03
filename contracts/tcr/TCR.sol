@@ -111,7 +111,180 @@ contract TCR is ITCR {
 
   }
 
-  
+  function challenge(bytes32 _listingHash, uint _amount)
+      external returns (uint challengeId) {
+
+    Listing storage listing = listings[_listingHash];
+
+    require(appWasMade(_listingHash) || listing.whitelisted, "Listing does not exist.");
+
+    require(listing.challengeId == 0 || challenges[listing.challengeId].resolved, "Listing is already challenged.");
+
+    require(listing.applicationExpiry > now, "Apply stage has passed.");
+
+    require(_amount >= listing.deposit, "Not enough stake passed for challenge.");
+
+    pollNonce = pollNonce.add(1);
+
+    challenges[pollNonce] = Challenge({
+
+      challenger: msg.sender,
+      stake: _amount,
+      resolved: false,
+      totalTokens: 0,
+      rewardPool: 0
+
+    });
+
+    polls[pollNonce] = Poll({
+
+      votesFor: 0,
+      votesAgainst: 0,
+      passed: false,
+      commitEndDate: now.add(commitStageLen)
+
+    });
+
+    listing.challengeId = pollNonce;
+
+    require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
+
+    emit Challenge(_listingHash, pollNonce, msg.sender);
+
+    return pollNonce;
+
+  }
+
+  function vote(bytes32 _listingHash, uint _amount, bool _choice) public {
+
+    Listing storage listing = listings[_listingHash];
+
+    require(appWasMade(_listingHash) || listing.whitelisted, "Listing does not exist.");
+
+    require(listing.challengeId > 0 && !challenges[listing.challengeId].resolved, "Listing is not challenged.");
+
+    Poll storage poll = polls[listing.challengeId];
+
+    require(poll.commitEndDate > now, "Commit period has passed.");
+
+    require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
+
+    if(_choice) {
+
+      poll.votesFor = poll.votesFor.add(_amount);
+
+    } else {
+
+      poll.votesAgainst = poll.votesAgainst.add(_amount);
+
+    }
+
+    poll.votes[msg.sender] = Vote({
+      value: _choice,
+      stake: _amount,
+      claimed: false
+    });
+
+    emit Vote(_listingHash, listing.challengeId, msg.sender);
+
+  }
+
+  function updateStatus(bytes32 _listingHash) public {
+
+    if (canBeWhitelisted(_listingHash)) {
+
+      listings[_listingHash].whitelisted = true;
+
+    } else {
+
+      resolveChallenge(_listingHash);
+
+    }
+    
+  }
+
+  function endPoll(uint challengeId) private returns (bool didPass) {
+
+    require(polls[challengeId].commitEndDate > 0, "Poll does not exist.");
+    Poll storage poll = polls[challengeId];
+
+    /* solium-disable-next-line security/no-block-members */
+    require(poll.commitEndDate < now, "Commit period is active.");
+
+    if (poll.votesFor >= poll.votesAgainst) {
+
+        poll.passed = true;
+
+      } else {
+
+        poll.passed = false;
+
+    }
+
+    return poll.passed;
+
+  }
+
+  function resolveChallenge(bytes32 _listingHash) private {
+
+    Listing memory listing = listings[_listingHash];
+
+    require(listing.challengeId > 0 && !challenges[listing.challengeId].resolved,
+        "Listing is not challenged.");
+
+    uint challengeId = listing.challengeId;
+
+    bool pollPassed = endPoll(challengeId);
+
+    challenges[challengeId].resolved = true;
+
+    address challenger = challenges[challengeId].challenger;
+
+    if (pollPassed) {
+
+      challenges[challengeId].totalTokens = polls[challengeId].votesFor;
+      challenges[challengeId].rewardPool = challenges[challengeId].stake + polls[challengeId].votesAgainst;
+      listings[_listingHash].whitelisted = true;
+
+    } else {
+
+      require(token.transfer(challenger, challenges[challengeId].stake), "Challenge stake return failed.");
+
+      challenges[challengeId].totalTokens = polls[challengeId].votesAgainst;
+      challenges[challengeId].rewardPool = listing.deposit + polls[challengeId].votesFor;
+
+      delete listings[_listingHash];
+      delete listingNames[listing.arrIndex];
+
+    }
+
+    emit _ResolveChallenge(_listingHash, challengeId, msg.sender);
+
+  }
+
+  function claimRewards(uint challengeId) public {
+
+    require(challenges[challengeId].resolved == true, "Challenge is not resolved.");
+
+    Poll storage poll = polls[challengeId];
+    Vote storage voteInstance = poll.votes[msg.sender];
+
+    require(voteInstance.claimed == false, "Vote reward is already claimed.");
+
+    if((poll.passed && voteInstance.value) || (!poll.passed && !voteInstance.value)) {
+
+      uint reward = (challenges[challengeId].rewardPool.div(challenges[challengeId].totalTokens)).mul(voteInstance.stake);
+      uint total = voteInstance.stake.add(reward);
+
+      require(token.transfer(msg.sender, total), "Voting reward transfer failed.");
+
+      emit _RewardClaimed(challengeId, total, msg.sender);
+
+    }
+
+    voteInstance.claimed = true;
+
+  }
 
   //GETTERS
 
