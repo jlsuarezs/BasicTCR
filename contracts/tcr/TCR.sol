@@ -1,4 +1,4 @@
-pragma solidity 0.4.24;
+pragma solidity 0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "contracts/zeppelin/ERC20/ERC20.sol";
@@ -9,6 +9,14 @@ import "contracts/interfaces/ITCR.sol";
 contract TCR is ITCR {
 
   using SafeMath for uint256;
+
+  //Events
+
+  event _Application(bytes32 indexed listingHash, uint deposit, string data, address indexed applicant);
+  event _Challenge(bytes32 indexed listingHash, uint challengeId, address indexed challenger);
+  event _Vote(bytes32 indexed listingHash, uint challengeId, address indexed voter);
+  event _ResolveChallenge(bytes32 indexed listingHash, uint challengeId, address indexed resolver);
+  event _RewardClaimed(uint indexed challengeId, uint reward, address indexed voter);
 
   struct Listing {
 
@@ -25,16 +33,16 @@ contract TCR is ITCR {
   struct Vote {
 
     bool value;
-    uint stake;
+    uint256 stake;
     bool claimed;
 
   }
 
   struct Poll {
 
-    uint256 votedFor;
+    uint256 votesFor;
     uint256 votesAgainst;
-    uint26 commitEndDate;
+    uint256 commitEndDate;
     bool passed;
 
     mapping(address => Vote) votes;
@@ -70,7 +78,7 @@ contract TCR is ITCR {
   uint256 constant private INITIAL_POLL_NONCE = 0;
   uint256 public pollNonce;
 
-  constructor(string _name, address _token, uint256[] parameters) {
+  constructor(string memory _name, address _token, uint256[] memory parameters) public {
 
     require(_token != address(0), "The token address shold not be zero");
 
@@ -88,16 +96,16 @@ contract TCR is ITCR {
 
   }
 
-  function apply(bytes32 listingHash, uint256 amount, string data) external {
+  function _apply(bytes32 listingHash, uint256 amount, string memory _data) public {
 
-    require(!IsWhitelisted(listingHash), "Listing is already whitelisted");
+    require(!isWhitelisted(listingHash), "Listing is already whitelisted");
     require(!appWasMade(listingHash), "Listing is already in apply mode");
     require(amount >= minDeposit, "Not enough stake for app");
 
     Listing storage listing = listings[listingHash];
 
     listing.owner = msg.sender;
-    listing.data = data;
+    listing.data = _data;
     listingNames.push(listing.data);
     listing.arrIndex = listingNames.length - 1;
 
@@ -105,9 +113,9 @@ contract TCR is ITCR {
 
     listing.deposit = amount;
 
-    require(token.transferFrom(listing.owner, this, amount), "Token transfer failed");
+    require(token.transferFrom(listing.owner, address(this), amount), "Token transfer failed");
 
-    emit Application(listingHash, amount, data, msg.sender);
+    emit _Application(listingHash, amount, _data, msg.sender);
 
   }
 
@@ -147,9 +155,9 @@ contract TCR is ITCR {
 
     listing.challengeId = pollNonce;
 
-    require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
+    require(token.transferFrom(msg.sender, address(this), _amount), "Token transfer failed.");
 
-    emit Challenge(_listingHash, pollNonce, msg.sender);
+    emit _Challenge(_listingHash, pollNonce, msg.sender);
 
     return pollNonce;
 
@@ -167,7 +175,7 @@ contract TCR is ITCR {
 
     require(poll.commitEndDate > now, "Commit period has passed.");
 
-    require(token.transferFrom(msg.sender, this, _amount), "Token transfer failed.");
+    require(token.transferFrom(msg.sender, address(this), _amount), "Token transfer failed.");
 
     if(_choice) {
 
@@ -185,7 +193,7 @@ contract TCR is ITCR {
       claimed: false
     });
 
-    emit Vote(_listingHash, listing.challengeId, msg.sender);
+    emit _Vote(_listingHash, listing.challengeId, msg.sender);
 
   }
 
@@ -200,7 +208,7 @@ contract TCR is ITCR {
       resolveChallenge(_listingHash);
 
     }
-    
+
   }
 
   function endPoll(uint challengeId) private returns (bool didPass) {
@@ -300,7 +308,7 @@ contract TCR is ITCR {
 
   }
 
-  function getAllListings() public view returns (string[]) {
+  function getAllListings() public view returns (string[] memory) {
 
     string[] memory listingArr = new string[](listingNames.length);
 
@@ -314,13 +322,13 @@ contract TCR is ITCR {
 
   }
 
-  function getDetails() public view returns (string, address, uint256, uint256, uint256) {
+  function getDetails() public view returns (string memory, address, uint256, uint256, uint256) {
 
-    return (name, token, minDeposit, applyStageLen, commitStageLen);
+    return (name, address(token), minDeposit, applyStageLen, commitStageLen);
 
   }
 
-  function getListingDetails(bytes32 listingHash) public view returns (bool, address, uint256, uint256, string) {
+  function getListingDetails(bytes32 listingHash) public view returns (bool, address, uint256, uint256, string memory) {
 
     Listing memory listingIns = listings[listingHash];
 

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.5.0;
 
 import "contracts/zeppelin/ERC20/BasicToken.sol";
 import "contracts/zeppelin/ERC20/ERC20.sol";

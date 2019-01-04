@@ -1,4 +1,4 @@
-pragma solidity 0.4.24;
+pragma solidity 0.5.0;
 
 import "contracts/zeppelin/ERC20/StandardToken.sol";
 
@@ -11,7 +11,6 @@ contract TCRToken is StandardToken {
 
     // Base variables
 
-    uint256 public totalSupply;
     uint8 public constant decimals = 0;
     uint256 public constant initialSupply = 21000000;
 
@@ -19,7 +18,7 @@ contract TCRToken is StandardToken {
 
         owner = msg.sender;
 
-        totalSupply = initialSupply;
+        totalSupply_ = initialSupply;
 
         balances[msg.sender] = initialSupply;
 

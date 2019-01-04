@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/stefanionescu/BasicTCR#readme",
   "dependencies": {
-    "openzeppelin-solidity": "^2.0.0"
+    "openzeppelin-solidity": "^2.0.0",
+    "truffle-hdwallet-provider": "^1.0.2"
   }
 }
